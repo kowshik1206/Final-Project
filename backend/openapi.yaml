@@ -1,0 +1,785 @@
+openapi: 3.0.1
+info:
+  title: RouteIQ API
+  description: Route optimization and cost calculation API
+  version: 1.0.0
+  contact:
+    name: RouteIQ Team
+    url: https://routeiq.io
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.routeiq.io
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Route
+    description: Route calculation and optimization
+  - name: Cost
+    description: Cost calculations
+  - name: POI
+    description: Points of Interest
+  - name: Optimization
+    description: Multi-stop optimization
+
+paths:
+  /api/auth/register:
+    post:
+      operationId: registerUser
+      tags:
+        - Authentication
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/user:
+    get:
+      operationId: getAuthenticatedUser
+      tags:
+        - Authentication
+      summary: Get authenticated user details
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/route/calc:
+    post:
+      operationId: calculateRoute
+      tags:
+        - Route
+      summary: Calculate route between two points
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteCalcRequest'
+      responses:
+        '200':
+          description: Route calculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/cost/calculate:
+    post:
+      operationId: calculateCost
+      tags:
+        - Cost
+      summary: Calculate trip cost by mode and distance
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CostRequest'
+      responses:
+        '200':
+          description: Cost calculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/cost/preview:
+    post:
+      operationId: previewCost
+      tags:
+        - Cost
+      summary: Calculate trip cost with sensitivity analysis
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CostRequest'
+      responses:
+        '200':
+          description: Cost preview with sensitivity analysis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostPreviewResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/pois/near-route:
+    post:
+      operationId: getPoisNearRoute
+      tags:
+        - POI
+      summary: Get POIs near a route
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PoiNearRouteRequest'
+      responses:
+        '200':
+          description: POIs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoiNearRouteResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/optimize/multi-stop:
+    post:
+      operationId: optimizeMultiStop
+      tags:
+        - Optimization
+      summary: Optimize multi-stop route (TSP)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OptimizeMultiStopRequest'
+      responses:
+        '200':
+          description: Route optimized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizeResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ApiError:
+      type: object
+      required:
+        - success
+        - message
+        - status
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Validation failed
+        errors:
+          type: object
+          nullable: true
+          example:
+            email:
+              - The email field is required.
+        status:
+          type: integer
+          example: 422
+
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+        - password_confirmation
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 255
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        password:
+          type: string
+          minLength: 8
+          example: SecurePass123
+        password_confirmation:
+          type: string
+          minLength: 8
+          example: SecurePass123
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Registration successful
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            name:
+              type: string
+              example: John Doe
+            email:
+              type: string
+              example: john@example.com
+            token:
+              type: string
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    UserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 1
+            name:
+              type: string
+              example: John Doe
+            email:
+              type: string
+              example: john@example.com
+            created_at:
+              type: string
+              format: date-time
+              example: '2025-01-15T10:30:00Z'
+
+    LocationObject:
+      type: object
+      required:
+        - lat
+        - lng
+      properties:
+        lat:
+          type: number
+          format: double
+          example: 40.7128
+        lng:
+          type: number
+          format: double
+          example: -74.0060
+
+    RouteCalcRequest:
+      type: object
+      required:
+        - origin
+        - destination
+      properties:
+        origin:
+          $ref: '#/components/schemas/LocationObject'
+        destination:
+          $ref: '#/components/schemas/LocationObject'
+
+    RouteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            distance:
+              type: number
+              format: double
+              description: Distance in kilometers
+              example: 12.5
+            duration:
+              type: number
+              format: double
+              description: Duration in minutes
+              example: 25.3
+            polyline:
+              type: string
+              description: Encoded polyline for route rendering
+              example: '}~isFttiVj@P'
+
+    CostRequest:
+      type: object
+      required:
+        - route
+        - mode_preferences
+      properties:
+        route:
+          type: object
+          required:
+            - distance_meters
+          properties:
+            distance_meters:
+              type: integer
+              description: Distance in meters
+              example: 100000
+              minimum: 1
+            duration_seconds:
+              type: integer
+              description: Duration in seconds
+              example: 3600
+            polyline:
+              type: string
+              description: Encoded polyline
+              nullable: true
+            points:
+              type: array
+              description: Array of latitude/longitude pairs
+              nullable: true
+              items:
+                $ref: '#/components/schemas/LocationObject'
+        mode_preferences:
+          type: array
+          minItems: 1
+          description: List of transportation modes to calculate
+          items:
+            type: string
+            enum:
+              - car
+              - ev
+              - train
+              - flight
+          example:
+            - car
+            - ev
+        vehicle:
+          type: object
+          description: Optional vehicle-specific parameters
+          nullable: true
+          properties:
+            fuel_efficiency_km_per_l:
+              type: number
+              format: double
+              example: 15
+              minimum: 1
+            fuel_price_per_l:
+              type: number
+              format: double
+              example: 95
+              minimum: 0
+            driver_cost_per_km:
+              type: number
+              format: double
+              example: 10
+              minimum: 0
+            toll_multiplier:
+              type: number
+              format: double
+              example: 0.05
+              minimum: 0
+              maximum: 1
+            ev_kwh_per_km:
+              type: number
+              format: double
+              example: 0.2
+              minimum: 0.01
+            price_per_kwh:
+              type: number
+              format: double
+              example: 15
+              minimum: 0
+            base_fare:
+              type: number
+              format: double
+              example: 100
+              minimum: 0
+            fare_per_km:
+              type: number
+              format: double
+              example: 2
+              minimum: 0
+            airport_fee:
+              type: number
+              format: double
+              example: 200
+              minimum: 0
+            cost_per_km:
+              type: number
+              format: double
+              example: 2.5
+              minimum: 0
+            fuel_surcharge_percentage:
+              type: number
+              format: double
+              example: 10
+              minimum: 0
+              maximum: 100
+
+    CostBreakdown:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+            - car
+            - ev
+            - train
+            - flight
+          example: car
+        total_cost:
+          type: number
+          format: double
+          description: Total cost in INR
+          example: 1665.00
+        breakdown:
+          type: object
+          properties:
+            fuel_cost:
+              type: number
+              format: double
+              nullable: true
+              example: 633.33
+            energy_cost:
+              type: number
+              format: double
+              nullable: true
+              example: null
+            driver_cost:
+              type: number
+              format: double
+              nullable: true
+              example: 1000.00
+            toll_cost:
+              type: number
+              format: double
+              nullable: true
+              example: 31.67
+            base_fare:
+              type: number
+              format: double
+              nullable: true
+              example: null
+            tax:
+              type: number
+              format: double
+              nullable: true
+              example: null
+        assumptions:
+          type: object
+          properties:
+            distance_km:
+              type: number
+              format: double
+              example: 100.0
+            fuel_efficiency_km_per_l:
+              type: number
+              format: double
+              nullable: true
+              example: 15
+            fuel_price_per_l:
+              type: number
+              format: double
+              nullable: true
+              example: 95
+            driver_rate_per_km:
+              type: number
+              format: double
+              nullable: true
+              example: 10
+            toll_multiplier:
+              type: number
+              format: double
+              nullable: true
+              example: 0.05
+            ev_kwh_per_km:
+              type: number
+              format: double
+              nullable: true
+              example: null
+            price_per_kwh:
+              type: number
+              format: double
+              nullable: true
+              example: null
+        explanation:
+          type: string
+          description: Human-readable explanation of cost calculation
+          example: "Car: ₹633.33 (fuel) + ₹1000.00 (driver) + ₹31.67 (toll) = ₹1665.00"
+
+    CostResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - success
+            - error
+          example: success
+        data:
+          type: object
+          properties:
+            costs:
+              type: object
+              additionalProperties:
+                $ref: '#/components/schemas/CostBreakdown'
+              example:
+                car:
+                  mode: car
+                  total_cost: 1665.00
+                  breakdown:
+                    fuel_cost: 633.33
+                    driver_cost: 1000.00
+                    toll_cost: 31.67
+                  explanation: "Car: ₹633.33 (fuel) + ₹1000.00 (driver) + ₹31.67 (toll) = ₹1665.00"
+            distance_km:
+              type: number
+              format: double
+              example: 100.0
+
+    CostPreviewResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - success
+            - error
+          example: success
+        data:
+          type: object
+          properties:
+            costs:
+              type: object
+              additionalProperties:
+                $ref: '#/components/schemas/CostBreakdown'
+            sensitivity:
+              type: object
+              properties:
+                fuel_price_effect:
+                  type: object
+                  properties:
+                    plus_5_percent:
+                      type: number
+                      format: double
+                      example: 45.50
+                    minus_5_percent:
+                      type: number
+                      format: double
+                      example: -45.50
+                efficiency_effect:
+                  type: object
+                  properties:
+                    plus_10_percent:
+                      type: number
+                      format: double
+                      example: -66.67
+                    minus_10_percent:
+                      type: number
+                      format: double
+                      example: 83.33
+            distance_km:
+              type: number
+              format: double
+              example: 100.0
+
+    PoiNearRouteRequest:
+      type: object
+      required:
+        - origin
+        - destination
+      properties:
+        origin:
+          $ref: '#/components/schemas/LocationObject'
+        destination:
+          $ref: '#/components/schemas/LocationObject'
+        radius:
+          type: number
+          format: double
+          description: Search radius in meters
+          default: 5000
+          example: 5000
+
+    PoiObject:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Central Station
+        category:
+          type: string
+          example: station
+        latitude:
+          type: number
+          format: double
+          example: 40.7128
+        longitude:
+          type: number
+          format: double
+          example: -74.0060
+        distance_from_route:
+          type: number
+          format: double
+          description: Distance in meters
+          example: 342.5
+
+    PoiNearRouteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PoiObject'
+          example:
+            - id: 1
+              name: Central Station
+              category: station
+              latitude: 40.7128
+              longitude: -74.0060
+              distance_from_route: 342.5
+
+    OptimizeMultiStopRequest:
+      type: object
+      required:
+        - origin
+        - destination
+        - waypoints
+      properties:
+        origin:
+          $ref: '#/components/schemas/LocationObject'
+        destination:
+          $ref: '#/components/schemas/LocationObject'
+        waypoints:
+          type: array
+          minItems: 1
+          maxItems: 7
+          items:
+            $ref: '#/components/schemas/LocationObject'
+        optimize_for:
+          type: string
+          nullable: true
+          enum:
+            - distance
+            - time
+          description: Optimization objective
+          example: distance
+
+    OptimizeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            optimized_order:
+              type: array
+              items:
+                type: integer
+              description: Indices of waypoints in optimized order
+              example:
+                - 0
+                - 2
+                - 1
+                - 3
+            total_distance:
+              type: number
+              format: double
+              description: Total distance in kilometers
+              example: 45.25
+            total_time:
+              type: number
+              format: double
+              description: Total time in minutes
+              example: 78.5
+
+  responses:
+    ValidationError:
+      description: Validation error (422)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            message: Validation failed
+            errors:
+              email:
+                - The email field is required.
+            status: 422
+
+    UnauthorizedError:
+      description: Unauthorized (401)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            message: Unauthorized
+            status: 401
+
+    ServerError:
+      description: Server error (500)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            message: An error occurred processing your request
+            status: 500

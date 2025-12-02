@@ -25,6 +25,11 @@ class RecommendController extends Controller
      */
     public function recommend(RecommendRequest $req)
     {
+        // Feature flag guard
+        if (!filter_var(env('FEATURE_RECOMMEND', true), FILTER_VALIDATE_BOOLEAN)) {
+            return $this->apiError('Recommend feature disabled', [], 503);
+        }
+
         $payload = $req->validated();
 
         try {

@@ -1,0 +1,102 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <circle cx="200" cy="200" r="190" fill="url(#bg-gradient)" opacity="0.08"/>
+  
+  <!-- Central Hub -->
+  <circle cx="200" cy="200" r="40" fill="white" stroke="url(#main-gradient)" stroke-width="3"/>
+  <circle cx="200" cy="200" r="30" fill="url(#main-gradient)" opacity="0.2"/>
+  
+  <!-- Car Mode (Top Right) -->
+  <g transform="translate(280, 130)">
+    <circle cx="0" cy="0" r="35" fill="white" stroke="url(#car-gradient)" stroke-width="2.5"/>
+    <g transform="translate(-20, -15)">
+      <rect x="5" y="12" width="30" height="15" rx="3" fill="url(#car-gradient)"/>
+      <circle cx="13" cy="29" r="4" fill="#1e293b"/>
+      <circle cx="27" cy="29" r="4" fill="#1e293b"/>
+      <path d="M8 12 L12 4 L28 4 L32 12" fill="url(#car-gradient)"/>
+    </g>
+  </g>
+  <path d="M240 180 L270 145" stroke="url(#car-gradient)" stroke-width="2.5" stroke-dasharray="4 3" opacity="0.5"/>
+  
+  <!-- Train Mode (Bottom Right) -->
+  <g transform="translate(280, 270)">
+    <circle cx="0" cy="0" r="35" fill="white" stroke="url(#train-gradient)" stroke-width="2.5"/>
+    <g transform="translate(-20, -15)">
+      <rect x="5" y="5" width="30" height="22" rx="3" fill="url(#train-gradient)"/>
+      <rect x="8" y="8" width="11" height="11" rx="1.5" fill="white" opacity="0.9"/>
+      <rect x="21" y="8" width="11" height="11" rx="1.5" fill="white" opacity="0.9"/>
+      <circle cx="13" cy="26" r="2.5" fill="#1e293b"/>
+      <circle cx="27" cy="26" r="2.5" fill="#1e293b"/>
+    </g>
+  </g>
+  <path d="M230 220 L265 250" stroke="url(#train-gradient)" stroke-width="2.5" stroke-dasharray="4 3" opacity="0.5"/>
+  
+  <!-- Plane Mode (Left) -->
+  <g transform="translate(90, 200)">
+    <circle cx="0" cy="0" r="35" fill="white" stroke="url(#plane-gradient)" stroke-width="2.5"/>
+    <g transform="translate(-15, -12)">
+      <path d="M15 8 L22 15 L25 14 L20 5 L21 3 L30 7 L32 6 L25 -2 L22 -2 L18 5 L13 3 L11 4 L13 10 L9 12 L7 11 L6 12 L9 16 L13 15 Z" 
+            fill="url(#plane-gradient)" transform="rotate(45 18 10)"/>
+    </g>
+  </g>
+  <path d="M160 200 L125 200" stroke="url(#plane-gradient)" stroke-width="2.5" stroke-dasharray="4 3" opacity="0.5"/>
+  
+  <!-- Bus Mode (Top Left) -->
+  <g transform="translate(120, 130)">
+    <circle cx="0" cy="0" r="35" fill="white" stroke="url(#bus-gradient)" stroke-width="2.5"/>
+    <g transform="translate(-18, -14)">
+      <rect x="5" y="5" width="26" height="20" rx="2.5" fill="url(#bus-gradient)"/>
+      <rect x="8" y="8" width="8" height="7" rx="1" fill="white" opacity="0.9"/>
+      <rect x="18" y="8" width="8" height="7" rx="1" fill="white" opacity="0.9"/>
+      <rect x="8" y="17" width="8" height="5" rx="1" fill="white" opacity="0.9"/>
+      <rect x="18" y="17" width="8" height="5" rx="1" fill="white" opacity="0.9"/>
+      <circle cx="12" cy="26" r="2" fill="#1e293b"/>
+      <circle cx="24" cy="26" r="2" fill="#1e293b"/>
+    </g>
+  </g>
+  <path d="M170 180 L140 150" stroke="url(#bus-gradient)" stroke-width="2.5" stroke-dasharray="4 3" opacity="0.5"/>
+  
+  <!-- Center Icon (Route/Compass) -->
+  <g transform="translate(200, 200)">
+    <path d="M0 -12 L4 0 L0 12 L-4 0 Z" fill="#6366f1"/>
+    <path d="M-12 0 L0 4 L12 0 L0 -4 Z" fill="#14b8a6"/>
+  </g>
+  
+  <!-- Decorative Elements -->
+  <circle cx="50" cy="100" r="3" fill="#6366f1" opacity="0.3"/>
+  <circle cx="350" cy="300" r="4" fill="#14b8a6" opacity="0.3"/>
+  <circle cx="340" cy="80" r="3.5" fill="#8b5cf6" opacity="0.3"/>
+  <circle cx="60" cy="320" r="3" fill="#06b6d4" opacity="0.3"/>
+  
+  <!-- Orbit Rings -->
+  <circle cx="200" cy="200" r="110" fill="none" stroke="#6366f1" stroke-width="1" opacity="0.1" stroke-dasharray="6 4"/>
+  <circle cx="200" cy="200" r="150" fill="none" stroke="#14b8a6" stroke-width="1" opacity="0.08" stroke-dasharray="8 5"/>
+  
+  <!-- Gradients -->
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14b8a6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="main-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14b8a6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="car-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4f46e5;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="train-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14b8a6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="plane-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6366f1;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bus-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>

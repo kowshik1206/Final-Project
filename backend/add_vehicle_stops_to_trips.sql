@@ -1,0 +1,3 @@
+ALTER TABLE trips 
+ADD COLUMN IF NOT EXISTS vehicle_json JSON,
+ADD COLUMN IF NOT EXISTS stops_json JSON;

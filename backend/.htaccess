@@ -1,0 +1,24 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # Allow real files and directories
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Route /api/* requests to public/api/*.php
+    RewriteRule ^api/route/calc$ public/api/route/calc.php [L]
+    RewriteRule ^api/trips$ public/api/trips.php [L]
+    RewriteRule ^api/optimize/multi-stop$ public/optimize.php [L]
+    
+    # Default to public folder
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# CORS Headers
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "http://localhost:5173"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    Header set Access-Control-Max-Age "86400"
+</IfModule>

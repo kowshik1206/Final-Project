@@ -3,34 +3,53 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\OptimizeMultiStopRequest;
-use App\Services\Maps\MapServiceFake;
-use App\Services\TSPService;
+use App\Services\OptimizeService;
+use Illuminate\Http\Request;
 
 class OptimizeController extends Controller
 {
-    public function multiStop(OptimizeMultiStopRequest $request)
+    protected $optimizeService;
+
+    public function __construct(OptimizeService $optimizeService)
     {
-        try {
-            $mapService = new MapServiceFake();
-            $tspService = new TSPService($mapService);
+        $this->optimizeService = $optimizeService;
+    }
 
-            $result = $tspService->optimize(
-                origin: $request->origin,
-                destination: $request->destination,
-                waypoints: $request->waypoints,
-                optimizeFor: $request->optimize_for ?? 'distance'
-            );
+    /**
+     * Optimize route
+     */
+    public function optimize(Request $request)
+    {
+        $validated = $request->validate([
+            'trip_id' => 'required|exists:trips,id',
+            'pois' => 'required|array',
+            'mode' => 'required|in:car,bike,walk,transit',
+        ]);
 
-            return response()->json([
-                'status' => 'success',
-                'data' => $result,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ], 400);
-        }
+        $optimizedRoute = $this->optimizeService->optimizeRoute($validated);
+
+        return response()->json([
+            'success' => true,
+            'data' => $optimizedRoute,
+        ]);
+    }
+
+    /**
+     * Get route suggestions
+     */
+    public function suggest(Request $request)
+    {
+        $validated = $request->validate([
+            'start' => 'required|string',
+            'end' => 'required|string',
+            'mode' => 'required|in:car,bike,walk,transit',
+        ]);
+
+        $suggestions = $this->optimizeService->getRouteSuggestions($validated);
+
+        return response()->json([
+            'success' => true,
+            'data' => $suggestions,
+        ]);
     }
 }

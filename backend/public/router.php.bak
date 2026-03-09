@@ -1,0 +1,27 @@
+<?php
+// Simple health check
+if ($_SERVER['REQUEST_URI'] === '/health') {
+    header('Content-Type: application/json');
+    echo json_encode(['ok' => true, 'time' => date('Y-m-d H:i:s')]);
+    exit;
+}
+
+// Try to route /api requests
+$request_uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// Route /api/trips to api/trips.php
+if ($request_uri === '/api/trips') {
+    include __DIR__ . '/public/api/trips.php';
+    exit;
+}
+
+// Route /api/route/calc to api/route/calc.php
+if ($request_uri === '/api/route/calc') {
+    include __DIR__ . '/public/api/route/calc.php';
+    exit;
+}
+
+// Not found
+header('Content-Type: application/json', true, 404);
+echo json_encode(['ok' => false, 'error' => 'Not found: ' . $request_uri]);
+?>

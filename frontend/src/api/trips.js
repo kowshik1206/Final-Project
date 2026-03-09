@@ -1,10 +1,9 @@
 import axiosClient from './axiosClient';
 
-const tripsAPI = {
-  saveTrip: (data) => axiosClient.post('/trips/save', data),
-  getTrips: () => axiosClient.get('/trips'),
-  getTrip: (id) => axiosClient.get(`/trips/${id}`),
-  getDashboardSummary: () => axiosClient.get('/dashboard/summary'),
+export default {
+  saveTrip: (payload) => axiosClient.post('/trips', payload),
+  getTrips: ({ limit = 100, offset = 0 } = {}) => axiosClient.get('/trips', { params: { limit, offset } }),
+  getTrip: (id) => axiosClient.get('/trips', { params: { id } }),
+  deleteTrip: (id) => axiosClient.delete('/trips', { data: { id } }),
+  getDashboardSummary: () => axiosClient.get('/analytics')
 };
-
-export default tripsAPI;

@@ -3,21 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\CalcCostRequest;
 use App\Services\CostService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 
-/**
- * CostController
- *
- * Handles cost calculation endpoints using CostService.
- * - POST /api/calc-cost — Calculate costs for given route and modes
- * - POST /api/calc-cost/preview — Calculate with sensitivity analysis
- */
 class CostController extends Controller
 {
-    private CostService $costService;
+    protected $costService;
 
     public function __construct(CostService $costService)
     {
@@ -25,95 +16,38 @@ class CostController extends Controller
     }
 
     /**
-     * POST /api/calc-cost
-     *
-     * Calculate trip costs by mode(s) and distance.
-     * Returns array of cost objects (one per requested mode).
+     * Calculate cost for a trip
      */
-    public function calculateCost(CalcCostRequest $request): JsonResponse
+    public function calculate(Request $request)
     {
-        try {
-            $input = [
-                'distance_meters' => $request->input('route.distance_meters'),
-                'mode_preferences' => $request->input('mode_preferences', ['car']),
-                'vehicle' => $request->input('vehicle', []),
-            ];
+        $validated = $request->validate([
+            'trip_id' => 'required|exists:trips,id',
+            'mode' => 'required|in:car,bike,walk,transit',
+            'distance' => 'required|numeric',
+        ]);
 
-            $result = $this->costService->calculate($input);
-            $cached = $result['cached'] ?? false;
-            $costs = $result['results'] ?? $result;
+        $cost = $this->costService->calculateCost($validated);
 
-            $response = response()->json([
-                'status' => 'success',
-                'data' => [
-                    'costs' => $costs,
-                    'distance_km' => $input['distance_meters'] / 1000,
-                ],
-            ], 200);
-
-            // Add cache header like Route Engine
-            $response->header('X-Cache', $cached ? 'HIT' : 'MISS');
-
-            return $response;
-        } catch (\Throwable $e) {
-            Log::error('Cost calculation failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Cost calculation failed',
-                'errors' => [],
-                'status' => 500,
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $cost,
+        ]);
     }
 
     /**
-     * POST /api/calc-cost/preview
-     *
-     * Calculate trip costs with sensitivity analysis.
-     * Includes fuel price and efficiency effects for car mode.
+     * Get cost breakdown
      */
-    public function previewCost(CalcCostRequest $request): JsonResponse
+    public function breakdown(Request $request)
     {
-        try {
-            $input = [
-                'distance_meters' => $request->input('route.distance_meters'),
-                'mode_preferences' => $request->input('mode_preferences', ['car']),
-                'vehicle' => $request->input('vehicle', []),
-            ];
+        $validated = $request->validate([
+            'trip_id' => 'required|exists:trips,id',
+        ]);
 
-            $preview = $this->costService->calculatePreview($input);
-            $cached = $preview['cached'] ?? false;
+        $breakdown = $this->costService->getBreakdown($validated['trip_id']);
 
-            $response = response()->json([
-                'status' => 'success',
-                'data' => [
-                    'costs' => $preview['costs'],
-                    'sensitivity' => $preview['sensitivity'],
-                    'distance_km' => $input['distance_meters'] / 1000,
-                ],
-            ], 200);
-
-            // Add cache header
-            $response->header('X-Cache', $cached ? 'HIT' : 'MISS');
-
-            return $response;
-        } catch (\Throwable $e) {
-            Log::error('Cost preview calculation failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Cost preview calculation failed',
-                'errors' => [],
-                'status' => 500,
-            ], 500);
-        }
-    }
-
-    /**
-     * Deprecated: kept for backward compatibility
-     * Use calculateCost instead
-     */
-    public function recommend(CalcCostRequest $request): JsonResponse
-    {
-        return $this->calculateCost($request);
+        return response()->json([
+            'success' => true,
+            'data' => $breakdown,
+        ]);
     }
 }

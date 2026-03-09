@@ -1,0 +1,186 @@
+<?php
+/**
+ * auth.php - Authentication system (register, login, logout)
+ * Add this AFTER all public features are tested and working
+ * 
+ * Usage:
+ * POST /auth.php?action=register { name, email, password }
+ * POST /auth.php?action=login { email, password }
+ * POST /auth.php?action=logout
+ * GET /auth.php?action=me (requires session)
+ */
+
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+header('Content-Type: application/json');
+session_start();
+
+require_once 'db.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+$action = $_GET['action'] ?? $_POST['action'] ?? null;
+
+if (!$action) {
+    json_response(['ok' => false, 'error' => 'Missing action parameter'], 400);
+}
+
+// ========== REGISTER ==========
+if ($action === 'register') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        json_response(['ok' => false, 'error' => 'Method not allowed'], 405);
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    $name = trim($input['name'] ?? '');
+    $email = trim($input['email'] ?? '');
+    $password = $input['password'] ?? '';
+
+    if (!$name || !$email || !$password) {
+        json_response(['ok' => false, 'error' => 'Missing required fields'], 400);
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        json_response(['ok' => false, 'error' => 'Invalid email address'], 400);
+    }
+
+    if (strlen($password) < 6) {
+        json_response(['ok' => false, 'error' => 'Password must be at least 6 characters'], 400);
+    }
+
+    try {
+        $db = get_db_connection();
+
+        // Check if email already exists
+        $stmt = $db->prepare("SELECT id FROM users WHERE email = :email");
+        $stmt->execute([':email' => $email]);
+        
+        if ($stmt->fetch()) {
+            json_response(['ok' => false, 'error' => 'Email already registered'], 400);
+        }
+
+        // Hash password and insert user
+        $passwordHash = password_hash($password, PASSWORD_BCRYPT);
+
+        $stmt = $db->prepare("
+            INSERT INTO users (name, email, password_hash, created_at) 
+            VALUES (:name, :email, :password_hash, NOW())
+        ");
+
+        $stmt->execute([
+            ':name' => $name,
+            ':email' => $email,
+            ':password_hash' => $passwordHash,
+        ]);
+
+        $userId = $db->lastInsertId();
+
+        // Set session
+        $_SESSION['user_id'] = $userId;
+        $_SESSION['email'] = $email;
+
+        json_response([
+            'ok' => true,
+            'message' => 'Registration successful',
+            'user' => [
+                'id' => (int)$userId,
+                'name' => $name,
+                'email' => $email,
+            ]
+        ], 201);
+
+    } catch (Exception $e) {
+        json_response(['ok' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+// ========== LOGIN ==========
+else if ($action === 'login') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        json_response(['ok' => false, 'error' => 'Method not allowed'], 405);
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    
+    $email = trim($input['email'] ?? '');
+    $password = $input['password'] ?? '';
+
+    if (!$email || !$password) {
+        json_response(['ok' => false, 'error' => 'Missing email or password'], 400);
+    }
+
+    try {
+        $db = get_db_connection();
+
+        $stmt = $db->prepare("SELECT id, name, email, password_hash FROM users WHERE email = :email");
+        $stmt->execute([':email' => $email]);
+        $user = $stmt->fetch();
+
+        if (!$user || !password_verify($password, $user['password_hash'])) {
+            json_response(['ok' => false, 'error' => 'Invalid email or password'], 401);
+        }
+
+        // Set session
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['email'] = $user['email'];
+
+        json_response([
+            'ok' => true,
+            'message' => 'Login successful',
+            'user' => [
+                'id' => (int)$user['id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+            ]
+        ], 200);
+
+    } catch (Exception $e) {
+        json_response(['ok' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+// ========== LOGOUT ==========
+else if ($action === 'logout') {
+    session_destroy();
+    json_response(['ok' => true, 'message' => 'Logged out successfully'], 200);
+}
+
+// ========== GET CURRENT USER ==========
+else if ($action === 'me') {
+    if (!isset($_SESSION['user_id'])) {
+        json_response(['ok' => false, 'error' => 'Not authenticated'], 401);
+    }
+
+    try {
+        $db = get_db_connection();
+
+        $stmt = $db->prepare("SELECT id, name, email, created_at FROM users WHERE id = :id");
+        $stmt->execute([':id' => $_SESSION['user_id']]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            json_response(['ok' => false, 'error' => 'User not found'], 404);
+        }
+
+        json_response([
+            'ok' => true,
+            'user' => [
+                'id' => (int)$user['id'],
+                'name' => $user['name'],
+                'email' => $user['email'],
+                'created_at' => $user['created_at'],
+            ]
+        ], 200);
+
+    } catch (Exception $e) {
+        json_response(['ok' => false, 'error' => $e->getMessage()], 500);
+    }
+}
+
+else {
+    json_response(['ok' => false, 'error' => 'Unknown action'], 400);
+}

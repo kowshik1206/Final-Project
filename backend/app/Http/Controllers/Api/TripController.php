@@ -5,111 +5,69 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Trip;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class TripController extends Controller
 {
-    public function saveTrip(Request $request)
+    /**
+     * Get all trips
+     */
+    public function index()
     {
-        try {
-            $validated = $request->validate([
-                'name' => ['nullable', 'string'],
-                'origin' => ['required', 'array'],
-                'destination' => ['required', 'array'],
-                'distance_meters' => ['required', 'numeric', 'min:0'],
-                'duration_seconds' => ['required', 'numeric', 'min:0'],
-                'mode' => ['required', 'in:car,ev,train,flight,auto'],
-                'cost' => ['required', 'array'],
-                'passengers' => ['required', 'integer', 'min:1'],
-                'polyline' => ['nullable', 'string'],
-                'waypoints' => ['nullable', 'array'],
-                'saved_preferences' => ['nullable', 'array'],
-            ]);
-
-            $trip = Trip::create([
-                'user_id' => Auth::id(),
-                ...$validated,
-            ]);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Trip saved successfully',
-                'data' => $trip,
-            ], 201);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ], 400);
-        }
+        $trips = Trip::all();
+        return response()->json(['success' => true, 'data' => $trips]);
     }
 
-    public function listTrips(Request $request)
+    /**
+     * Create a new trip
+     */
+    public function store(Request $request)
     {
-        try {
-            $trips = Trip::where('user_id', Auth::id())
-                ->orderBy('created_at', 'desc')
-                ->paginate($request->per_page ?? 20);
+        $validated = $request->validate([
+            'title' => 'required|string',
+            'start_location' => 'required|string',
+            'end_location' => 'required|string',
+            'mode' => 'required|in:car,bike,walk,transit',
+        ]);
 
-            return response()->json([
-                'status' => 'success',
-                'data' => $trips,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ], 400);
-        }
+        $trip = Trip::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Trip created successfully',
+            'data' => $trip,
+        ], 201);
     }
 
-    public function getTrip($id)
+    /**
+     * Get a specific trip
+     */
+    public function show($id)
     {
-        try {
-            $trip = Trip::findOrFail($id);
-
-            if ($trip->user_id !== Auth::id()) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unauthorized',
-                ], 403);
-            }
-
-            return response()->json([
-                'status' => 'success',
-                'data' => $trip,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ], 404);
-        }
+        $trip = Trip::findOrFail($id);
+        return response()->json(['success' => true, 'data' => $trip]);
     }
 
-    public function deleteTrip($id)
+    /**
+     * Update a trip
+     */
+    public function update(Request $request, $id)
     {
-        try {
-            $trip = Trip::findOrFail($id);
+        $trip = Trip::findOrFail($id);
+        $trip->update($request->all());
 
-            if ($trip->user_id !== Auth::id()) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unauthorized',
-                ], 403);
-            }
+        return response()->json([
+            'success' => true,
+            'message' => 'Trip updated successfully',
+            'data' => $trip,
+        ]);
+    }
 
-            $trip->delete();
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Trip deleted successfully',
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ], 404);
-        }
+    /**
+     * Delete a trip
+     */
+    public function destroy($id)
+    {
+        Trip::findOrFail($id)->delete();
+        return response()->json(['success' => true, 'message' => 'Trip deleted successfully']);
     }
 }

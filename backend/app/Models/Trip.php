@@ -5,53 +5,47 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * Trip Model
- * 
- * Represents user trips with route data, cost, and preferences.
- */
 class Trip extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
-        'name',
-        'origin',
-        'destination',
-        'waypoints',
-        'polyline',
-        'distance_meters',
-        'duration_seconds',
+        'title',
+        'start_location',
+        'end_location',
         'mode',
+        'distance',
+        'duration',
         'cost',
-        'passengers',
-        'saved_preferences',
+        'user_id',
     ];
 
     protected $casts = [
-        'origin' => 'array',
-        'destination' => 'array',
-        'waypoints' => 'array',
-        'cost' => 'array',
-        'saved_preferences' => 'array',
-        'passengers' => 'integer',
-        'distance_meters' => 'float',
-        'duration_seconds' => 'float',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
+    /**
+     * Relationship with User
+     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function getDistanceKmAttribute()
+    /**
+     * Relationship with TripModeCost
+     */
+    public function modeCosts()
     {
-        return $this->distance_meters / 1000;
+        return $this->hasMany(TripModeCost::class);
     }
 
-    public function getDurationMinutesAttribute()
+    /**
+     * Relationship with Poi
+     */
+    public function pois()
     {
-        return ceil($this->duration_seconds / 60);
+        return $this->belongsToMany(Poi::class);
     }
 }

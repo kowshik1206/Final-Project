@@ -1,0 +1,6 @@
+{"timestamp":"2026-03-09 20:29:27.000000","request_id":"b83088f2-1ca5-4684-9986-f0bc04bd81e4","event":"request_start","endpoint":"/api/trips","method":"GET","ip_address":"127.0.0.1","user_id":null}
+{"timestamp":"2026-03-09 20:29:27.000000","request_id":"b83088f2-1ca5-4684-9986-f0bc04bd81e4","event":"response_success","endpoint":"/api/trips","http_code":200,"latency_ms":31,"cache_hit":false,"cache_miss":false,"data_count":26}
+{"timestamp":"2026-03-09 20:50:43.000000","request_id":"435bd502-6b65-4585-9834-265abf87c29e","event":"request_start","endpoint":"/api/trips","method":"GET","ip_address":"127.0.0.1","user_id":null}
+{"timestamp":"2026-03-09 20:50:43.000000","request_id":"435bd502-6b65-4585-9834-265abf87c29e","event":"response_success","endpoint":"/api/trips","http_code":200,"latency_ms":13,"cache_hit":false,"cache_miss":false,"data_count":26}
+{"timestamp":"2026-03-09 20:50:43.000000","request_id":"c8964aa4-1eec-43f6-a916-f39e9c0458fc","event":"request_start","endpoint":"/api/trips","method":"GET","ip_address":"127.0.0.1","user_id":null}
+{"timestamp":"2026-03-09 20:50:43.000000","request_id":"c8964aa4-1eec-43f6-a916-f39e9c0458fc","event":"response_success","endpoint":"/api/trips","http_code":200,"latency_ms":8,"cache_hit":false,"cache_miss":false,"data_count":26}

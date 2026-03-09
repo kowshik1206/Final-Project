@@ -1,0 +1,18 @@
+# .htaccess — CORS headers + URL rewrite (Apache only)
+# Use only if PHP cors.php is not included in endpoints
+# Priority: PHP middleware (cors.php) is recommended; use this as fallback
+
+# Enable mod_rewrite
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+</IfModule>
+
+# CORS Headers (applied to all requests)
+<IfModule mod_headers.c>
+    # Set for localhost dev
+    Header set Access-Control-Allow-Origin "http://localhost:5173"
+    Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    Header set Access-Control-Max-Age "86400"
+</IfModule>

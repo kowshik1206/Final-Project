@@ -3,128 +3,148 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\RouteCalcRequest;
-use App\Services\MapServiceFactory;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 
-/**
- * Route Controller
- *
- * Handles route calculation and geometry parsing via MapService abstraction.
- */
 class RouteController extends Controller
 {
-    protected MapServiceFactory $factory;
-
-    public function __construct(MapServiceFactory $factory)
-    {
-        $this->factory = $factory;
-    }
-
     /**
-     * POST /api/route/calc
-     *
-     * Calculate route between points or from polyline.
+     * Plan a route between source and destination using OSRM
+     * Expected request body: { source: "place name", destination: "place name" }
      */
-    public function calc(RouteCalcRequest $req): JsonResponse
+    public function planRoute(Request $request)
     {
-        $payload = $req->only(['points', 'polyline', 'mode', 'preference']);
+        Log::info('🛣️ Plan route endpoint called', ['body' => $request->all()]);
 
-        // Basic safety checks
-        if (!empty($payload['points']) && count($payload['points']) < 2) {
-            return response()->json([
-                'success' => false,
-                'message' => 'At least two points are required',
-                'errors' => [],
-                'status' => 422
-            ], 422);
+        $source = $request->input('source');
+        $destination = $request->input('destination');
+
+        if (!$source || !$destination) {
+            Log::warning('❌ Missing source or destination');
+            return response()->json(['ok' => false, 'message' => 'source and destination required'], 400);
         }
 
-        // Normalize input for cache key
-        $normalized = [
-            'points' => $payload['points'] ?? null,
-            'polyline' => $payload['polyline'] ?? null,
-            'mode' => $payload['mode'] ?? 'car',
-            'preference' => $payload['preference'] ?? 'fastest'
-        ];
-
-        $cacheKey = 'route:' . hash('sha256', json_encode($normalized));
-        $cacheTTL = (int) env('ROUTE_CACHE_TTL', 86400);
-
-        // Attempt cache read
-        $cached = Cache::get($cacheKey);
-        if ($cached !== null) {
-            return response()->json(['status' => 'success', 'data' => $cached], 200)->header('X-Cache', 'HIT');
-        }
-
-        // Acquire service via factory; handle possible google failure with fallback
-        $svc = $this->factory->make();
         try {
-            $start = microtime(true);
-            $res = $svc->calculateRoute($normalized['points'], $normalized['polyline'], $normalized['preference'], $normalized['mode']);
-            $durationMs = (int) round((microtime(true) - $start) * 1000);
-        } catch (\Throwable $e) {
-            Log::warning('Route calc failed on provider: ' . $e->getMessage());
-            // fallback to fake
-            $svc = app(\App\Services\MapServiceFake::class);
-            $start = microtime(true);
-            $res = $svc->calculateRoute($normalized['points'], $normalized['polyline'], $normalized['preference'], $normalized['mode']);
-            $res['calculated_via'] = 'fallback';
-            $durationMs = (int) round((microtime(true) - $start) * 1000);
-        }
-
-        // Persist a compact api_log if table exists
-        try {
-            if (Schema::hasTable('api_logs')) {
-                DB::table('api_logs')->insert([
-                    'user_id' => auth()->id(),
-                    'endpoint' => '/api/route/calc',
-                    'payload' => json_encode(['input_hash' => $cacheKey]),
-                    'response' => json_encode(['distance' => $res['distance_meters'], 'via' => $res['calculated_via']]),
-                    'status_code' => 200,
-                    'duration_ms' => $durationMs,
-                    'created_at' => Carbon::now(),
-                ]);
+            // Step 1: Geocode source and destination using Nominatim
+            Log::info('📍 Geocoding source', ['source' => $source]);
+            $sourceCoords = $this->geocodePlace($source);
+            if (!$sourceCoords) {
+                Log::warning('❌ Could not geocode source', ['source' => $source]);
+                return response()->json(['ok' => false, 'message' => 'Could not find source location'], 400);
             }
-        } catch (\Throwable $ex) {
-            // swallow logging errors
-            Log::debug('api_logs insert failed: ' . $ex->getMessage());
+            Log::info('✅ Source geocoded', $sourceCoords);
+
+            Log::info('📍 Geocoding destination', ['destination' => $destination]);
+            $destCoords = $this->geocodePlace($destination);
+            if (!$destCoords) {
+                Log::warning('❌ Could not geocode destination', ['destination' => $destination]);
+                return response()->json(['ok' => false, 'message' => 'Could not find destination location'], 400);
+            }
+            Log::info('✅ Destination geocoded', $destCoords);
+
+            // Step 2: Call OSRM routing service
+            // Format: [lon,lat];[lon,lat]
+            $coordsStr = "{$sourceCoords['lon']},{$sourceCoords['lat']};{$destCoords['lon']},{$destCoords['lat']}";
+            $osrmUrl = "http://router.project-osrm.org/route/v1/driving/{$coordsStr}?overview=full&geometries=geojson";
+            
+            Log::info('🛣️ Calling OSRM routing service', ['url' => substr($osrmUrl, 0, 150)]);
+
+            $resp = Http::timeout(60)->get($osrmUrl);
+            Log::info('📡 OSRM response received', ['status' => $resp->status()]);
+
+            if ($resp->failed()) {
+                Log::error('❌ OSRM request failed', ['status' => $resp->status(), 'body' => substr($resp->body(), 0, 200)]);
+                return response()->json(['ok' => false, 'message' => 'Routing service error: ' . $resp->status()], 502);
+            }
+
+            $json = $resp->json();
+            Log::debug('OSRM response keys', ['keys' => array_keys($json)]);
+
+            // Check for errors in OSRM response
+            if ($json['code'] !== 'Ok') {
+                Log::error('❌ OSRM returned error code', ['code' => $json['code'], 'message' => $json['message'] ?? '']);
+                return response()->json(['ok' => false, 'message' => 'No route found: ' . ($json['message'] ?? $json['code'])], 404);
+            }
+
+            // Extract route
+            if (empty($json['routes'])) {
+                Log::error('❌ OSRM returned no routes', ['response' => $json]);
+                return response()->json(['ok' => false, 'message' => 'No route available'], 404);
+            }
+
+            $route = $json['routes'][0];
+            $distance_m = $route['distance'] ?? 0;
+            $duration_s = $route['duration'] ?? 0;
+            $distance_km = round($distance_m / 1000, 2);
+            $duration_min = round($duration_s / 60, 1);
+
+            // Extract polyline (GeoJSON LineString geometry)
+            $geometry = $route['geometry'] ?? null;
+            $polyline = [];
+            if ($geometry && is_array($geometry['coordinates'])) {
+                // geometry.coordinates is [[lon,lat], [lon,lat], ...]
+                // Convert to [{lat, lng}, {lat, lng}, ...]
+                $polyline = array_map(function ($coord) {
+                    return ['lat' => $coord[1], 'lng' => $coord[0]];
+                }, $geometry['coordinates']);
+            }
+
+            Log::info('✅ Route computed successfully', [
+                'distance_km' => $distance_km,
+                'duration_min' => $duration_min,
+                'polyline_points' => count($polyline)
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'distance_km' => $distance_km,
+                'duration_min' => $duration_min,
+                'distance_m' => $distance_m,
+                'duration_s' => $duration_s,
+                'polyline' => $polyline,
+                'source' => $source,
+                'destination' => $destination,
+                'source_coords' => $sourceCoords,
+                'dest_coords' => $destCoords
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('❌ Route planning exception', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            return response()->json(['ok' => false, 'message' => 'Route planning error: ' . $e->getMessage()], 500);
         }
-
-        // Cache the result
-        Cache::put($cacheKey, $res, $cacheTTL);
-
-        return response()->json(['status' => 'success', 'data' => $res], 200)->header('X-Cache', 'MISS');
     }
 
     /**
-     * POST /api/route/parse-geometry
-     *
-     * Decode polyline and return normalized points and re-encoded polyline.
+     * Geocode a place name using Nominatim (OSM)
      */
-    public function parseGeometry(Request $req): JsonResponse
+    private function geocodePlace($place)
     {
-        $polyline = $req->input('polyline');
-        if (empty($polyline) || !is_string($polyline)) {
-            return response()->json(['success' => false, 'message' => 'polyline required', 'errors' => [], 'status' => 422], 422);
+        try {
+            $q = urlencode($place);
+            $url = "https://nominatim.openstreetmap.org/search?q={$q}&format=json&limit=1";
+            $resp = Http::withHeaders(['Accept' => 'application/json'])->timeout(15)->get($url);
+            
+            if ($resp->failed() || $resp->json() === []) {
+                return null;
+            }
+            
+            $results = $resp->json();
+            if (!empty($results[0])) {
+                return [
+                    'lat' => floatval($results[0]['lat']),
+                    'lon' => floatval($results[0]['lon']),
+                    'display_name' => $results[0]['display_name'] ?? $place
+                ];
+            }
+            return null;
+        } catch (\Exception $e) {
+            Log::warning('Geocode exception', ['place' => $place, 'error' => $e->getMessage()]);
+            return null;
         }
-
-        $svc = $this->factory->make();
-        $points = $svc->decodePolyline($polyline);
-        $simplified = $svc->encodePolyline($points); // encode back to ensure normalized representation
-
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'points' => $points,
-                'polyline' => $simplified
-            ]
-        ], 200);
     }
 }

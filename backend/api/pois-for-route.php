@@ -251,7 +251,7 @@ Logger::debug('DISTANCE_FILTER', 'Filtering complete', [
 // Rule: A POI is invalid if it creates a gap larger than effective range.
 
 $feasibilityStatus = [
-    'vehicle' => $vehicle ? $vehicle['fuel_type'] : 'none',
+    'vehicle' => $vehicle ? ($vehicle['fuel_type'] ?? 'unknown') : 'none',
     'effective_range_km' => $vehicle ? intval($vehicle['effective_range_km'] ?? 0) : null,
     'max_gap_km' => null,
     'status' => 'OK'

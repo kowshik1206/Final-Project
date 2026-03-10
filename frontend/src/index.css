@@ -1,3 +1,4 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@500;600;700;800&display=swap');
 
 @tailwind base;
@@ -757,6 +758,13 @@ a {
   to { transform: rotate(360deg); }
 }
 
+/* Animated gradient border for hero sections */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 /* Hero carousel slide transitions */
 .animate-slideTextIn {
   animation: slideTextIn 550ms var(--riq-ease) both;
@@ -1123,6 +1131,7 @@ html {
   animation: rotate 20s linear infinite;
   opacity: 0;
   transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .riq-panel:hover::before {

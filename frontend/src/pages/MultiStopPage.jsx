@@ -24,7 +24,7 @@ export default function MultiStopPage() {
   const navigate = useNavigate();
   const [startLocation, setStartLocation] = useState('');
   const [endLocation, setEndLocation] = useState('');
-  const [stops, setStops] = useState([{ name: '' }]);
+  const [stops, setStops] = useState([{ id: Date.now(), name: '', lat: null, lng: null }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
@@ -32,7 +32,7 @@ export default function MultiStopPage() {
   const [polylineData, setPolylineData] = useState([]);
 
   const addStop = () => {
-    setStops([...stops, { name: '', lat: null, lng: null, status: 'idle' }]);
+    setStops([...stops, { id: Date.now() + Math.random(), name: '', lat: null, lng: null }]);
   };
 
   const removeStop = (index) => {
@@ -42,8 +42,10 @@ export default function MultiStopPage() {
   };
 
   const updateStop = (index, field, value) => {
+    console.log('updateStop called:', { index, field, value, currentStops: stops });
     const newStops = [...stops];
     newStops[index][field] = value;
+    console.log('newStops:', newStops);
     setStops(newStops);
   };
 
@@ -358,9 +360,14 @@ export default function MultiStopPage() {
                   </label>
                   <input
                     type="text"
-                    value={startLocation}
-                    onChange={(e) => setStartLocation(e.target.value)}
+                    value={startLocation || ''}
+                    onChange={(e) => {
+                      console.log('Start location onChange:', e.target.value);
+                      setStartLocation(e.target.value);
+                    }}
+                    onFocus={() => console.log('Start location focused')}
                     placeholder="e.g., New Delhi"
+                    autoComplete="off"
                     className="w-full px-5 py-3.5 border-2 border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 text-base font-medium"
                     style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
                   />
@@ -373,9 +380,14 @@ export default function MultiStopPage() {
                   </label>
                   <input
                     type="text"
-                    value={endLocation}
-                    onChange={(e) => setEndLocation(e.target.value)}
+                    value={endLocation || ''}
+                    onChange={(e) => {
+                      console.log('End location onChange:', e.target.value);
+                      setEndLocation(e.target.value);
+                    }}
+                    onFocus={() => console.log('End location focused')}
                     placeholder="e.g., Airport"
+                    autoComplete="off"
                     className="w-full px-5 py-3.5 border-2 border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 text-base font-medium"
                     style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
                   />
@@ -399,7 +411,7 @@ export default function MultiStopPage() {
 
                   <div className="space-y-3">
                     {stops.map((stop, idx) => (
-                      <div key={idx} className="flex gap-3 items-center">
+                      <div key={stop.id} className="flex gap-3 items-center">
                         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-teal-500 flex items-center justify-center text-white font-bold text-base" style={{
                           boxShadow: '0 2px 8px rgba(99,102,241,0.3)'
                         }}>
@@ -407,11 +419,18 @@ export default function MultiStopPage() {
                         </div>
                         <input
                           type="text"
-                          value={stop.name}
-                          onChange={(e) => updateStop(idx, 'name', e.target.value)}
+                          value={stop.name || ''}
+                          onChange={(e) => {
+                            console.log('Input onChange fired:', e.target.value);
+                            updateStop(idx, 'name', e.target.value);
+                          }}
+                          onInput={(e) => console.log('Input onInput fired:', e.target.value)}
+                          onFocus={() => console.log('Input focused:', idx)}
                           placeholder={`Stop ${idx + 1} name`}
+                          autoComplete="off"
                           className="flex-1 px-5 py-3.5 border-2 border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600 dark:focus:ring-teal-500 text-base font-medium"
-                          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+                          style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)', position: 'relative', zIndex: 10 }}
+                          data-testid={`stop-input-${idx}`}
                         />
 
                         {stops.length > 1 && (
@@ -460,7 +479,7 @@ export default function MultiStopPage() {
                 </button>
 
                 <p className="text-xs text-slate-500 dark:text-slate-400 text-center mt-3">
-                  ℹ️ Multi-Stop optimization is for planning only. Final distance, time, and cost are calculated after selecting a mode.
+                  ℹ️ Multi-Stop optimization provides route planning and cost estimates. Click on a mode below for detailed journey planning.
                 </p>
               </div>
             </form>
@@ -501,27 +520,94 @@ export default function MultiStopPage() {
                   recommended_mode: result.recommendedMode,
                   reason: result.total_distance_km > 600
                     ? 'Very long distance strongly favors train; Train highly optimal for distances >600 km'
-                    : null
+                    : result.ordered_stops?.length >= 7
+                    ? 'Multiple stops - train provides better comfort and cost efficiency'
+                    : result.ordered_stops?.length >= 5
+                    ? 'Several stops - bus offers good balance of cost and flexibility'
+                    : 'Moderate stops - car provides convenient point-to-point travel'
                 }}
                 car={{
-                  cost: result.total_distance_km * 10, // Rough estimate: ₹10/km
-                  duration: result.total_distance_km * 6, // Rough estimate: 10 km/h average
+                  cost: (() => {
+                    // More realistic car cost calculation
+                    // Base: ₹8/km fuel (assuming 15 km/l @ ₹120/l)
+                    // Add: Stop penalties (₹50 per stop for idling/restart)
+                    const fuelCost = result.total_distance_km * 8;
+                    const stopPenalty = (result.ordered_stops?.length || 0) * 50;
+                    return fuelCost + stopPenalty;
+                  })(),
+                  duration: (() => {
+                    // Average 50 km/h + 10 min per stop
+                    const drivingTime = (result.total_distance_km / 50) * 60;
+                    const stopTime = (result.ordered_stops?.length || 0) * 10;
+                    return drivingTime + stopTime;
+                  })(),
                 }}
                 ev={{
-                  cost: result.total_distance_km * 4, // Rough estimate: ₹4/km for EV
+                  cost: (() => {
+                    // EV: ₹2.5/km electricity (assuming 5 km/kWh @ ₹12.5/kWh)
+                    // Add: Charging time cost (₹100 per charging stop)
+                    const electricityCost = result.total_distance_km * 2.5;
+                    const chargingStops = Math.ceil(result.total_distance_km / 300);
+                    const chargingCost = chargingStops * 100;
+                    return electricityCost + chargingCost;
+                  })(),
                   chargingStops: Math.ceil(result.total_distance_km / 300), // Every 300km
+                  duration: (() => {
+                    // Similar to car but add charging time (30 min per charge)
+                    const drivingTime = (result.total_distance_km / 50) * 60;
+                    const stopTime = (result.ordered_stops?.length || 0) * 10;
+                    const chargingTime = Math.ceil(result.total_distance_km / 300) * 30;
+                    return drivingTime + stopTime + chargingTime;
+                  })(),
                   feasible: true
                 }}
                 train={{
-                  cost: result.total_distance_km * 1.5, // Rough estimate: ₹1.5/km
-                  duration: result.total_distance_km * 7, // Rough estimate: ~8.5 km/h
+                  cost: (() => {
+                    // Train: ₹0.7-1.2/km (sleeper class)
+                    // Use ₹1.0/km average + ₹200 base fare
+                    const baseFare = 200;
+                    const distanceFare = result.total_distance_km * 1.0;
+                    return baseFare + distanceFare;
+                  })(),
+                  duration: (() => {
+                    // Average train speed 60 km/h + 30 min buffer per major stop
+                    const travelTime = (result.total_distance_km / 60) * 60;
+                    const stopBuffer = Math.min((result.ordered_stops?.length || 0) * 30, 180); // Max 3 hours
+                    return travelTime + stopBuffer;
+                  })(),
                   available: result.total_distance_km > 50 // Trains viable for longer distances
                 }}
                 bus={{
-                  cost: result.total_distance_km * 2.5, // Rough estimate: ₹2.5/km
-                  duration: result.total_distance_km * 10, // Rough estimate: ~6 km/h
+                  cost: (() => {
+                    // Bus: ₹1.5-2.5/km
+                    // Use ₹2.0/km average + ₹50 base fare
+                    const baseFare = 50;
+                    const distanceFare = result.total_distance_km * 2.0;
+                    return baseFare + distanceFare;
+                  })(),
+                  duration: (() => {
+                    // Average bus speed 40 km/h + 15 min per stop
+                    const travelTime = (result.total_distance_km / 40) * 60;
+                    const stopTime = (result.ordered_stops?.length || 0) * 15;
+                    return travelTime + stopTime;
+                  })(),
                   available: true
                 }}
+                flight={result.total_distance_km > 500 ? {
+                  cost: (() => {
+                    // Flight: Base ₹3000 + ₹5/km
+                    const baseFare = 3000;
+                    const distanceFare = result.total_distance_km * 5;
+                    return baseFare + distanceFare;
+                  })(),
+                  duration: (() => {
+                    // Flight speed 700 km/h + 3 hours airport/security time
+                    const flightTime = (result.total_distance_km / 700) * 60;
+                    const airportTime = 180; // 3 hours buffer
+                    return flightTime + airportTime;
+                  })(),
+                  available: true
+                } : null}
               />
             )}
           </div>

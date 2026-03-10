@@ -27,7 +27,7 @@ if ($stmt->get_result()->num_rows > 0) {
 
 // Insert
 $hash = password_hash($password, PASSWORD_DEFAULT);
-$stmt = $conn->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
+$stmt = $conn->prepare("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)");
 $stmt->bind_param("sss", $name, $email, $hash);
 
 if ($stmt->execute()) {

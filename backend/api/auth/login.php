@@ -14,13 +14,13 @@ if (!$email || !$password) {
     exit;
 }
 
-$stmt = $conn->prepare("SELECT id, name, email, password FROM users WHERE email = ?");
+$stmt = $conn->prepare("SELECT id, name, email, password_hash FROM users WHERE email = ?");
 $stmt->bind_param("s", $email);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($user = $result->fetch_assoc()) {
-    if (password_verify($password, $user['password'])) {
+    if (password_verify($password, $user['password_hash'])) {
         // Generate a simple token (in prod use JWT)
         // For this MVP, we'll store a random session token in DB or just return a dummy token that the frontend trusts
         // A better approach for PHP without JWT lib is just using a hashed session ID.
@@ -31,7 +31,7 @@ if ($user = $result->fetch_assoc()) {
         
         $token = base64_encode($user['id'] . ':' . md5($user['email'] . 'secret_salt'));
         
-        unset($user['password']);
+        unset($user['password_hash']); // Remove password hash from response
         echo json_encode([
             'success' => true,
             'token' => $token,
